@@ -48,3 +48,13 @@ input, select {
   font-size: 14px;
   border: 1px solid #f5c2c7;
 }
+
+.success-box {
+  background: #d1fae5;
+  color: #065f46;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  border: 1px solid #a7f3d0;
+}

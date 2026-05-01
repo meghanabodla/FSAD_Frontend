@@ -72,6 +72,13 @@
   transition: 0.3s ease;
 }
 
+.role-card {
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  text-decoration: none;
+}
+
 .info-card:hover {
   transform: translateY(-8px);
   box-shadow: 0 15px 30px rgba(200, 162, 232, 0.4);

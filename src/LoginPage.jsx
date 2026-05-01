@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import "./Login.css";
 import { apiJson, clearSession, saveSession } from "./api";
 
@@ -13,10 +13,16 @@ const initialSignup = {
 };
 
 export default function LoginPage() {
+  const [searchParams] = useSearchParams();
+  const roleParam = searchParams.get("role");
+  const selectedRole = roleParam === "TEACHER" || roleParam === "STUDENT" ? roleParam : "";
+  const selectedRoleLabel = selectedRole === "TEACHER" ? "Teacher" : selectedRole === "STUDENT" ? "Student" : "";
   const [mode, setMode] = useState("login");
   const [loginData, setLoginData] = useState(initialLogin);
-  const [signupData, setSignupData] = useState(initialSignup);
-  const [otpData, setOtpData] = useState({ email: "", otp: "" });
+  const [signupData, setSignupData] = useState({
+    ...initialSignup,
+    role: selectedRole === "TEACHER" || selectedRole === "STUDENT" ? selectedRole : ""
+  });
   const [redirectTo, setRedirectTo] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -44,14 +50,10 @@ export default function LoginPage() {
       setError("");
       setSuccess("");
       const response = await apiJson("/auth/login", "POST", normalizedLogin);
-
-      if (response.mfaRequired) {
-        setOtpData({ email: normalizedLogin.email, otp: "" });
-        setMode("verify-login");
-        setSuccess(response.message);
+      if (selectedRole && response.role !== selectedRole) {
+        setError(`Please use the ${response.role === "TEACHER" ? "Teacher" : "Student"} login option for this account`);
         return;
       }
-
       saveSession(response);
       setRedirectTo(response.role === "TEACHER" ? "/teacher" : "/student");
     } catch (err) {
@@ -92,40 +94,13 @@ export default function LoginPage() {
       setError("");
       setSuccess("");
       const message = await apiJson("/auth/register", "POST", normalizedSignup);
-      setOtpData({ email: normalizedSignup.email, otp: "" });
-      setMode("verify-registration");
-      setSuccess(message);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyRegistration = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      setSuccess("");
-      const message = await apiJson("/auth/verify-registration", "POST", otpData);
       setMode("login");
-      setLoginData({ email: otpData.email, password: "" });
+      setLoginData({ email: normalizedSignup.email, password: "" });
+      setSignupData({
+        ...initialSignup,
+        role: selectedRole === "TEACHER" || selectedRole === "STUDENT" ? selectedRole : ""
+      });
       setSuccess(message);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyTeacherLogin = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      setSuccess("");
-      const response = await apiJson("/auth/verify-login-otp", "POST", otpData);
-      saveSession(response);
-      setRedirectTo("/teacher");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -141,13 +116,11 @@ export default function LoginPage() {
     <div className="container">
       <div className="login-box">
         <h2>
-          {mode === "login" && "Login"}
-          {mode === "signup" && "Signup"}
-          {mode === "verify-registration" && "Verify Email OTP"}
-          {mode === "verify-login" && "Teacher MFA"}
+          {mode === "login" && `${selectedRoleLabel ? `${selectedRoleLabel} ` : ""}Login`}
+          {mode === "signup" && `${selectedRoleLabel ? `${selectedRoleLabel} ` : ""}Signup`}
         </h2>
 
-        {error && <div className="error-box">Warning: {error}</div>}
+        {error && <div className="error-box">{error}</div>}
         {success && <div className="success-box">{success}</div>}
 
         {mode === "login" && (
@@ -201,6 +174,7 @@ export default function LoginPage() {
             />
             <select
               value={signupData.role}
+              disabled={Boolean(selectedRoleLabel)}
               onChange={(e) => handleChange(setSignupData, { role: e.target.value })}
             >
               <option value="">Select Role</option>
@@ -216,27 +190,6 @@ export default function LoginPage() {
           </>
         )}
 
-        {(mode === "verify-registration" || mode === "verify-login") && (
-          <>
-            <input type="email" value={otpData.email} disabled />
-            <input
-              type="text"
-              placeholder="Enter OTP"
-              value={otpData.otp}
-              onChange={(e) => handleChange(setOtpData, { otp: e.target.value })}
-            />
-            <button
-              type="button"
-              onClick={mode === "verify-registration" ? verifyRegistration : verifyTeacherLogin}
-              disabled={loading}
-            >
-              {loading ? "Please wait..." : "Verify OTP"}
-            </button>
-            <p onClick={() => { setMode("login"); setError(""); setSuccess(""); }}>
-              Back to Login
-            </p>
-          </>
-        )}
       </div>
     </div>
   );

@@ -3,7 +3,6 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api
 const TOKEN_KEY = "assignment_token";
 const USER_KEY = "assignment_user";
 const MOCK_DB_KEY = "assignment_mock_db";
-const MOCK_OTPS_KEY = "assignment_mock_otps";
 
 function createMockDb() {
   return {
@@ -48,14 +47,6 @@ function getMockDb() {
 
 function saveMockDb(db) {
   writeJson(MOCK_DB_KEY, db);
-}
-
-function getMockOtps() {
-  return readJson(MOCK_OTPS_KEY, {});
-}
-
-function saveMockOtps(otps) {
-  writeJson(MOCK_OTPS_KEY, otps);
 }
 
 function makeId(db, type) {
@@ -297,7 +288,6 @@ async function handleMockRequest(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
   const body = await parseMockBody(options.body);
   const db = getMockDb();
-  const otps = getMockOtps();
 
   if (path === "/auth/register" && method === "POST") {
     const { name, email, password, role } = body;
@@ -306,44 +296,21 @@ async function handleMockRequest(path, options = {}) {
       throw new Error("Please fill all required fields");
     }
 
-    if (db.users.some((user) => user.email === normalizedEmail) || otps[normalizedEmail]?.pendingUser) {
+    if (db.users.some((user) => user.email === normalizedEmail)) {
       throw new Error("Email already registered");
-    }
-
-    otps[normalizedEmail] = {
-      type: "registration",
-      code: "123456",
-      pendingUser: {
-        name: name.trim(),
-        email: normalizedEmail,
-        password,
-        role: normalizeRole(role)
-      }
-    };
-    saveMockOtps(otps);
-
-    return "Signup initiated. OTP sent to email.";
-  }
-
-  if (path === "/auth/verify-registration" && method === "POST") {
-    const normalizedEmail = body.email?.trim().toLowerCase();
-    const record = otps[normalizedEmail];
-
-    if (!record || record.type !== "registration" || record.code !== body.otp?.trim()) {
-      throw new Error("Invalid OTP");
     }
 
     const user = {
       id: makeId(db, "user"),
-      ...record.pendingUser
+      name: name.trim(),
+      email: normalizedEmail,
+      password,
+      role: normalizeRole(role)
     };
     db.users.push(user);
     saveMockDb(db);
 
-    delete otps[normalizedEmail];
-    saveMockOtps(otps);
-
-    return "Registration verified. Please login.";
+    return "Registration successful. Please login.";
   }
 
   if (path === "/auth/login" && method === "POST") {
@@ -356,33 +323,6 @@ async function handleMockRequest(path, options = {}) {
       throw new Error("Authentication failed");
     }
 
-    if (user.role === "TEACHER") {
-      otps[normalizedEmail] = {
-        type: "teacher-login",
-        code: "123456"
-      };
-      saveMockOtps(otps);
-
-      return {
-        mfaRequired: true,
-        message: "Teacher verification required. OTP sent to email."
-      };
-    }
-
-    return makeAuthResponse(user);
-  }
-
-  if (path === "/auth/verify-login-otp" && method === "POST") {
-    const normalizedEmail = body.email?.trim().toLowerCase();
-    const record = otps[normalizedEmail];
-    const user = db.users.find((item) => item.email === normalizedEmail);
-
-    if (!user || !record || record.type !== "teacher-login" || record.code !== body.otp?.trim()) {
-      throw new Error("Invalid OTP");
-    }
-
-    delete otps[normalizedEmail];
-    saveMockOtps(otps);
     return makeAuthResponse(user);
   }
 
@@ -666,7 +606,7 @@ export async function openProtectedFile(path) {
   }
 
   const token = getToken();
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${API_BASE_}${path}`, {
     headers: {
       Authorization: `Bearer ${token}`
     }

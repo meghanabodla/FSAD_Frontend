@@ -28,15 +28,15 @@ export default function Home() {
       </div>
 
       <div className="info-section">
-        <div className="info-card">
+        <Link to="/login?role=STUDENT" className="info-card role-card">
           <h3>For Students</h3>
           <p>Submit assignments and track feedback easily.</p>
-        </div>
+        </Link>
 
-        <div className="info-card">
+        <Link to="/login?role=TEACHER" className="info-card role-card">
           <h3>For Teachers</h3>
           <p>Create assignments and evaluate submissions efficiently.</p>
-        </div>
+        </Link>
 
         <div className="info-card">
           <h3>Organized System</h3>
